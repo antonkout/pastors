@@ -1,0 +1,4 @@
+# Make Poetry install into the ACTIVE conda env instead of creating its own
+# virtualenv. Run `conda activate pastors` first, then `poetry install`.
+[virtualenvs]
+create = false

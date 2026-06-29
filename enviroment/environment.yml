@@ -1,0 +1,30 @@
+# Conda environment for PASTORS (Pastoral Activity & Soil-geochemistry Through Orbital Remote Sensing)
+#
+# Strategy: conda provides Python + the binary-heavy geospatial stack
+# (GDAL/GEOS/PROJ and the libraries linked against them). Poetry then
+# installs the pure-Python packages INTO this same env (see pyproject.toml
+# and README.md). Keep geospatial libs here, application libs in Poetry.
+#
+# Create:   conda env create -f enviroment/environment.yml
+# Activate: conda activate pastors
+# Update:   conda env update -f enviroment/environment.yml --prune
+
+name: pastors
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  # --- system / geospatial binaries (installed by conda, NOT poetry) ---
+  - gdal>=3.6
+  - geos
+  - proj
+  - rasterio>=1.3
+  - geopandas>=0.13
+  - pyproj>=3.5
+  - shapely>=2.0
+  - fiona
+  # --- tooling ---
+  - pip
+  - poetry>=1.8

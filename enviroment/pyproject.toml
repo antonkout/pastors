@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "pastors"
+version = "0.1.0"
+description = "Detecting anthropogenic activity in pastoral landscapes from satellite imagery and soil geochemistry via compositional balances (XGBoost vs. TabPFN)."
+authors = ["Antonios Koutroumpas <antonios.koutroumpas@upf.edu>"]
+readme = "../README.md"
+license = "MIT"
+# Not a importable/installable package — we only use Poetry for dependency
+# management inside the conda env. This skips trying to build a 'pastors' wheel.
+package-mode = false
+
+[tool.poetry.dependencies]
+# Match the conda env Python. The geospatial stack (gdal, rasterio,
+# geopandas, pyproj, shapely, fiona) is provided by conda and is therefore
+# intentionally NOT listed here, to avoid duplicate/conflicting installs.
+python = ">=3.10,<3.12"
+
+# --- numerical / data ---
+numpy = "^1.26"
+pandas = "^2.2"
+scipy = "^1.13"
+
+# --- machine learning ---
+scikit-learn = "^1.4"
+xgboost = "^2.0"
+optuna = "^3.6"
+tabpfn-client = "^0.1"
+
+# --- compositional data analysis ---
+composition-stats = "^2.0"
+
+# --- earth engine / remote data ---
+earthengine-api = "^0.1"
+requests = "^2.31"
+
+# --- visualization ---
+matplotlib = "^3.8"
+seaborn = "^0.13"
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0"
+ipykernel = "^6.29"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"

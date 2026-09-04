@@ -46,12 +46,43 @@ SPECTRAL_BANDS = {
 }
 
 
+def _extract_window(cube, rows, cols, window):
+    """
+    Sample a (bands, H, W) cube at integer (rows, cols).
+
+    window <= 1 -> the single pixel (original behaviour).
+    window > 1  -> per-band median over a window x window neighbourhood,
+                   clipped at the raster edges. The median (not mean) resists
+                   a stray shadow / rock / vegetation pixel in the patch.
+
+    Only the satellite FEATURE side is aggregated here; the ground-sample
+    chemistry (a composition) is never touched by the window.
+    """
+    if window is None or window <= 1:
+        return cube[:, rows, cols]
+    B, H, W = cube.shape
+    half = window // 2
+    out = np.empty((B, len(rows)), dtype=np.float32)
+    for k, (r, c) in enumerate(zip(rows, cols)):
+        r0, r1 = max(0, r - half), min(H, r + half + 1)
+        c0, c1 = max(0, c - half), min(W, c + half + 1)
+        patch = cube[:, r0:r1, c0:c1].reshape(B, -1)
+        out[:, k] = np.nanmedian(patch, axis=1)
+    return out
+
+
 def load_satellite_data(satellite_type, df_closed,
                         sharpen_swir=False, use_embeddings=False,
-                        embeddings_path=None, emb_interpolate=True):
+                        embeddings_path=None, emb_interpolate=True,
+                        window=1):
     """
     Read raster, extract per-sample pixel values, aggregate samples sharing
     a pixel via compositional geometric mean, and append spectral indices.
+
+    `window` controls the satellite-feature footprint: 1 = the single pixel
+    containing each sample; 3 = median over a 3x3 neighbourhood (absorbs
+    GPS / co-registration error at 1.5 m). Indices are computed AFTER the
+    window median, so they inherit the smoothed bands (no ratio bias).
 
     Coordinates are taken from df_closed['geometry'] (.x and .y).
     The raster CRS must match the df_closed/geometry CRS - mismatch raises
@@ -173,7 +204,9 @@ def load_satellite_data(satellite_type, df_closed,
     df_chem.index.name = df_closed.index.name or 'Serial'
 
     ar, ac = np.array(agg_rows), np.array(agg_cols)
-    pixel_values = data[:, ar, ac].T
+    if window and window > 1:
+        print(f"  window: {window}x{window} median per sample")
+    pixel_values = _extract_window(data, ar, ac, window).T
     df_sat = pd.DataFrame(
         pixel_values,
         columns=band_names[:pixel_values.shape[1]],
@@ -187,7 +220,7 @@ def load_satellite_data(satellite_type, df_closed,
 
     # Append embedding columns, sampled at the same aggregated pixels
     if emb_grid is not None:
-        emb_vals = emb_grid[:, ar, ac].T
+        emb_vals = _extract_window(emb_grid, ar, ac, window).T
         df_emb = pd.DataFrame(emb_vals, columns=emb_names, index=agg_index)
         df_out = pd.concat([df_out, df_emb], axis=1)
         print(f"  added {emb_vals.shape[1]} embedding columns")

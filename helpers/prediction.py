@@ -25,6 +25,7 @@ def predict_raster(
     use_embeddings=False,
     embeddings_path=None,
     emb_interpolate=True,
+    window=1,
 ):
     """
     Run pixel-wise inference on a satellite raster.
@@ -81,6 +82,15 @@ def predict_raster(
         from helpers.feature_ops import sharpen_swir_bands
         img = sharpen_swir_bands(img, band_names)
 
+    # Window: the raster analogue of the training-time k x k median extraction.
+    # A per-band median filter makes every pixel's features equal the median of
+    # its window, so training and inference vectors match. Indices are computed
+    # afterwards from the filtered bands (no ratio bias).
+    if window and window > 1:
+        from scipy.ndimage import median_filter
+        img = median_filter(img, size=(1, window, window), mode='nearest')
+        print(f"  window: {window}x{window} median filter on bands")
+
     df_px = pd.DataFrame(img.reshape(B, -1).T, columns=band_names)
     df_px = _add_spectral_indices(df_px, satellite)
 
@@ -92,6 +102,10 @@ def predict_raster(
         emb_grid, emb_names = embeddings_on_grid(
             embeddings_path, out_transform, out_crs, H, W,
             interpolate=emb_interpolate)
+        if window and window > 1:
+            from scipy.ndimage import median_filter
+            emb_grid = median_filter(emb_grid, size=(1, window, window),
+                                     mode='nearest')
         emb_df = pd.DataFrame(emb_grid.reshape(emb_grid.shape[0], -1).T,
                               columns=emb_names, index=df_px.index)
         df_px = pd.concat([df_px, emb_df], axis=1)
